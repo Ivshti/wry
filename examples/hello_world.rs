@@ -17,11 +17,12 @@ fn main() -> wry::Result<()> {
     .with_title("Hello World")
     .build(&event_loop)?;
   let _webview = WebViewBuilder::new(window)?
-    .with_url("https://html5test.com")?
+    .with_url("https://app.strem.io/shell-v4.4/#/")?
     .build()?;
 
   event_loop.run(move |event, _, control_flow| {
-    *control_flow = ControlFlow::Wait;
+   // *control_flow = ControlFlow::Wait;
+    //dbg!(&event);
 
     match event {
       Event::NewEvents(StartCause::Init) => println!("Wry has started!"),

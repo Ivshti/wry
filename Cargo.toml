@@ -49,6 +49,8 @@ anyhow = "1.0"
 http-range = "0.1.5"
 dirs = "4.0.0"
 base64 = "0.13.1"
+libmpv = { git = "https://github.com/sirno/libmpv-rs", branch="upgrade-libmpv" }
+crossbeam = "0.8.2"
 
 [target."cfg(any(target_os = \"linux\", target_os = \"dragonfly\", target_os = \"freebsd\", target_os = \"openbsd\", target_os = \"netbsd\"))".dependencies]
 webkit2gtk = { version = "0.18.2", features = [ "v2_22" ] }
