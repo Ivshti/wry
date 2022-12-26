@@ -23,7 +23,7 @@ fn main() -> wry::Result<()> {
   // WindowBuilder, Window is from Tao
   let event_loop = EventLoop::new();
   let window = WindowBuilder::new()
-    .with_decorations(false)
+    .with_decorations(true)
     // There are actually three layer of background color when creating webview window.
     // The first is window background...
     .with_transparent(true)
@@ -37,7 +37,7 @@ fn main() -> wry::Result<()> {
     .with_devtools(true)
     .with_url( 
       //"https://app.strem.io/shell-v4.4/#/"
-      "http://127.0.0.1:11470/#/"
+      "http://127.0.0.1:11471/#/"
     )?
     .build()?;
 
@@ -53,11 +53,6 @@ fn main() -> wry::Result<()> {
     let webview_view = webview.webview();
     let _: () = msg_send![content_view, addSubview:player_view positioned:NSWindowOrderingMode::NSWindowBelow relativeTo:webview_view];
 
-
-    //let subviews: id = msg_send![content_view, subviews];
-    //let first_subview: id = msg_send![subviews, objectAtIndex: 0 as u32];
-    // dbg!(first_subview, webview_view); // those are equal
-  
     dbg!(webview_view, content_view, window_id, player_view);
     // ??     win.native("contentView")("setAutoresizesSubviews", $.YES); ??
 
