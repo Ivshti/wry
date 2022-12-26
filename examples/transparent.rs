@@ -34,24 +34,11 @@ fn main() -> wry::Result<()> {
   let webview = WebViewBuilder::new(window)?
     // The second is on webview...
     .with_transparent(true)
-    // And the last is in html.
-    .with_html(
-      r#"
-            <!doctype html>
-            <html>
-              <body style="background-color:rgba(87,87,87,0.5);">hello</body>
-              <script>
-                window.onload = function() {
-                  document.body.innerText = `hello, ${navigator.userAgent}`;
-                };
-              </script>
-            </html>"#,
-    )?
     .with_devtools(true)
-    /*.with_url( 
+    .with_url( 
       //"https://app.strem.io/shell-v4.4/#/"
       "http://127.0.0.1:11470/#/"
-    )?*/
+    )?
     .build()?;
 
   // Setup MPV
@@ -101,24 +88,7 @@ fn main() -> wry::Result<()> {
   // end of paradoxapiral
 
     /*
-    NSRect frame = [[self->w contentView] bounds];
-    self->wrapper = [[NSView alloc] initWithFrame:frame];
-    [self->wrapper setAutoresizingMask:NSViewWidthSizable|NSViewHeightSizable];
-    [[self->w contentView] addSubview:self->wrapper];
-    [self->wrapper release];
-    
-    OR
-
-    var playerView = $.NSView.extend("playerView");
     // not defininig playerView.isOpaque and .drawRect, although we may have to
-
-    playerView.register();
-
-    var size = win.native("contentView")("frame").size;
-    var view = playerView("alloc")("initWithFrame", $.NSMakeRect(0,0,size.width,size.height));
-    win.native("contentView")("addSubview", view);
-    win.native("contentView")("setAutoresizesSubviews", $.YES);
-    view("setAutoresizingMask", $.NSViewHeightSizable | $.NSViewWidthSizable);
     */
   }
   // end setup MPV
