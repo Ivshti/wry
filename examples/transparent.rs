@@ -50,11 +50,12 @@ fn main() -> wry::Result<()> {
     let _: () = msg_send![player_view, initWithFrame:frame];
     // This next line is actually done in wry: https://github.com/tauri-apps/wry/blob/dev/src/webview/wkwebview/mod.rs#L748
     // this line triggers a segfault when resizing the window
+    // sometimes it doesn't crash so we need to debug this
     let _: () = msg_send![player_view, setAutoresizingMask:NSViewHeightSizable | NSViewWidthSizable];
     let webview_view = webview.webview();
     let _: () = msg_send![content_view, addSubview:player_view positioned:NSWindowOrderingMode::NSWindowBelow relativeTo:webview_view];
     // this line seems to not do anything
-    let _: () = msg_send![content_view, setAutoresizesSubviews:cocoa::base::YES];
+    //let _: () = msg_send![content_view, setAutoresizesSubviews:cocoa::base::YES];
     dbg!(webview_view, content_view, window_id, player_view);
 
     // we need a new thread here anyway
@@ -85,6 +86,7 @@ fn main() -> wry::Result<()> {
 
     /*
     // not defininig playerView.isOpaque and .drawRect, although we may have to
+    // not for drawRect, it's defined here: https://github.com/mpv-player/mpv/blob/master/video/out/cocoa/video_view.m
     */
   }
   // end setup MPV
