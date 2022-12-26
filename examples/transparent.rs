@@ -68,6 +68,7 @@ fn main() -> wry::Result<()> {
     //paradox spiral
     let mpv = libmpv::Mpv::new().unwrap();
     mpv.set_property("volume", 100).unwrap();
+    mpv.set_property("hwdec", "auto");
     mpv.set_property("terminal", "yes").unwrap();
     mpv.set_property("msg-level", "all=v").unwrap();
     mpv.set_property("wid", player_view_id).unwrap();
