@@ -63,13 +63,7 @@ fn main() -> wry::Result<()> {
     // This next line is actually done in wry: https://github.com/tauri-apps/wry/blob/dev/src/webview/wkwebview/mod.rs#L748
     let _: () = msg_send![player_view, setAutoresizingMask:NSViewHeightSizable | NSViewWidthSizable];
     let webview_view = webview.webview();
-    // option 1
-    //let _: () = msg_send![content_view, insertSubview:player_view at:0 as u32];    
-    // option 2: instead of addSubview, we use insertSubview because the webview is already inserted
-    //let _: () = msg_send![content_view, insertSubview:player_view belowSubview:webview.webview()];
-    // option 3
     let _: () = msg_send![content_view, addSubview:player_view];
-    //let _: () = msg_send![content_view, bringSubviewToFront:webview_view];
 
 
     //let subviews: id = msg_send![content_view, subviews];
