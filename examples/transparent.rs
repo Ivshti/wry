@@ -69,33 +69,13 @@ fn main() -> wry::Result<()> {
     
     // we need a new thread here anyway
     let player_view_id = player_view as i64;
-    /*
-    crossbeam::scope(|scope| {
-      scope.spawn(|_| {
-        
-        let mut mpv_builder = mpv::MpvHandlerBuilder::new().expect("Failed to init MPV builder");
-        mpv_builder.try_hardware_decoding()
-        .expect("failed setting hwdec");
-        mpv_builder.set_option("wid", player_view_id).expect("failed setting wid");
-        mpv_builder.set_option("terminal", "yes").expect("failed setting terminal");
-        mpv_builder.set_option("msg-level", "all=v").expect("failed setting msg-level");
-        let mut mpv = mpv_builder.build().expect("Failed to build MPV handler");
-        mpv.set_property("quiet", "no").unwrap();
-        mpv.set_property("volume", 50).unwrap();
 
-        dbg!(mpv.command(&["loadfile", "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"]));
-
-      });
-    });
-    */
     //paradox spiral
     let mpv = libmpv::Mpv::new().unwrap();
-    //mpv.set_property("wid", player_view_id)?;
     mpv.set_property("volume", 100).unwrap();
     mpv.set_property("terminal", "yes").unwrap();
     mpv.set_property("msg-level", "all=v").unwrap();
     mpv.set_property("wid", player_view_id).unwrap();
-    //mpv.set_property("vo", "cocoa").unwrap();
       std::thread::spawn(move || {
         let mut ev_ctx = mpv.create_event_context();
         ev_ctx.disable_deprecated_events().unwrap();
