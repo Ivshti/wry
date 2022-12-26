@@ -7,6 +7,7 @@ use objc::*;
 use wry::webview::WebviewExtMacOS;
 use cocoa::base::id;
 use cocoa::appkit::{NSView, NSViewHeightSizable, NSViewWidthSizable};
+use cocoa::appkit::NSWindowOrderingMode;
 use core_graphics::geometry::CGRect;
 
 fn main() -> wry::Result<()> {
@@ -63,7 +64,7 @@ fn main() -> wry::Result<()> {
     // This next line is actually done in wry: https://github.com/tauri-apps/wry/blob/dev/src/webview/wkwebview/mod.rs#L748
     let _: () = msg_send![player_view, setAutoresizingMask:NSViewHeightSizable | NSViewWidthSizable];
     let webview_view = webview.webview();
-    let _: () = msg_send![content_view, addSubview:player_view];
+    let _: () = msg_send![content_view, addSubview:player_view positioned:NSWindowOrderingMode::NSWindowBelow relativeTo:webview_view];
 
 
     //let subviews: id = msg_send![content_view, subviews];
