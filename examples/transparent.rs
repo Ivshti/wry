@@ -37,7 +37,7 @@ fn main() -> wry::Result<()> {
     .with_devtools(true)
     .with_url( 
       //"https://app.strem.io/shell-v4.4/#/"
-      "http://127.0.0.1:11471/#/"
+      "http://127.0.0.1:11470/#/"
     )?
     .build()?;
 
@@ -49,13 +49,13 @@ fn main() -> wry::Result<()> {
     let frame: CGRect = msg_send![content_view, bounds];
     let _: () = msg_send![player_view, initWithFrame:frame];
     // This next line is actually done in wry: https://github.com/tauri-apps/wry/blob/dev/src/webview/wkwebview/mod.rs#L748
+    // this line triggers a segfault when resizing the window
     let _: () = msg_send![player_view, setAutoresizingMask:NSViewHeightSizable | NSViewWidthSizable];
     let webview_view = webview.webview();
     let _: () = msg_send![content_view, addSubview:player_view positioned:NSWindowOrderingMode::NSWindowBelow relativeTo:webview_view];
-
+    // this line seems to not do anything
+    let _: () = msg_send![content_view, setAutoresizesSubviews:cocoa::base::YES];
     dbg!(webview_view, content_view, window_id, player_view);
-    // ??     win.native("contentView")("setAutoresizesSubviews", $.YES); ??
-
 
     // we need a new thread here anyway
     let player_view_id = player_view as i64;
