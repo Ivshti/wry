@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 use objc::*;
-// needed so we can reach into window.ns_window()
-use wry::application::platform::macos::WindowExtMacOS;
+// needed so we can get the .webview() and .ns_window() which is an NSView: https://github.com/tauri-apps/wry/blob/dev/src/webview/mod.rs#L856
+use wry::webview::WebviewExtMacOS;
 use cocoa::base::id;
 use cocoa::appkit::{NSView, NSViewHeightSizable, NSViewWidthSizable};
 use core_graphics::geometry::CGRect;
@@ -28,10 +28,9 @@ fn main() -> wry::Result<()> {
     .with_transparent(true)
     .build(&event_loop)
     .unwrap();
-  let window_id = window.ns_window() as id;
 
   // setup the webview first because it sets a new contentView
-  let _webview = WebViewBuilder::new(window)?
+  let webview = WebViewBuilder::new(window)?
     // The second is on webview...
     .with_transparent(true)
     // And the last is in html.
@@ -56,17 +55,31 @@ fn main() -> wry::Result<()> {
 
   // Setup MPV
   unsafe {
+    let window_id = webview.ns_window();
     let content_view: id = msg_send![window_id, contentView];
     let player_view: id = msg_send![class!(NSView), alloc];
     let frame: CGRect = msg_send![content_view, bounds];
     let _: () = msg_send![player_view, initWithFrame:frame];
+    // This next line is actually done in wry: https://github.com/tauri-apps/wry/blob/dev/src/webview/wkwebview/mod.rs#L748
     let _: () = msg_send![player_view, setAutoresizingMask:NSViewHeightSizable | NSViewWidthSizable];
-    // instead of addSubview, we use 
+    let webview_view = webview.webview();
+    // option 1
+    //let _: () = msg_send![content_view, insertSubview:player_view at:0 as u32];    
+    // option 2: instead of addSubview, we use insertSubview because the webview is already inserted
+    //let _: () = msg_send![content_view, insertSubview:player_view belowSubview:webview.webview()];
+    // option 3
     let _: () = msg_send![content_view, addSubview:player_view];
+    //let _: () = msg_send![content_view, bringSubviewToFront:webview_view];
+
+
+    //let subviews: id = msg_send![content_view, subviews];
+    //let first_subview: id = msg_send![subviews, objectAtIndex: 0 as u32];
+    // dbg!(first_subview, webview_view); // those are equal
+  
+    dbg!(webview_view, content_view, window_id, player_view);
     // ??     win.native("contentView")("setAutoresizesSubviews", $.YES); ??
 
-    dbg!(&player_view);
-    
+
     // we need a new thread here anyway
     let player_view_id = player_view as i64;
 
