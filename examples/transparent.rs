@@ -37,12 +37,12 @@ fn main() -> wry::Result<()> {
     .with_devtools(true)
     .with_url( 
       //"https://app.strem.io/shell-v4.4/#/"
-      "http://127.0.0.1:11470/#/"
+      "http://127.0.0.1:11471/#/"
     )?
     .build()?;
 
   // Setup MPV
-  unsafe {
+  let player_view_id = unsafe {
     let window_id = webview.ns_window();
     let content_view: id = msg_send![window_id, contentView];
     let player_view: id = msg_send![class!(NSView), alloc];
@@ -60,41 +60,38 @@ fn main() -> wry::Result<()> {
 
     // we need a new thread here anyway
     let player_view_id = player_view as i64;
-
-    //paradox spiral
-    let mpv = libmpv::Mpv::new().unwrap();
-    mpv.set_property("volume", 100).unwrap();
-    mpv.set_property("hwdec", "auto");
-    mpv.set_property("terminal", "yes").unwrap();
-    mpv.set_property("msg-level", "all=v").unwrap();
-    mpv.set_property("wid", player_view_id).unwrap();
-      std::thread::spawn(move || {
-        let mut ev_ctx = mpv.create_event_context();
-        ev_ctx.disable_deprecated_events().unwrap();
     
-        mpv.playlist_load_files(&[(
-          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-          libmpv::FileState::AppendPlay,
-          None
-        )]);
-        loop {
-          let ev = ev_ctx.wait_event(600.);
-          dbg!(&ev);
-        }
-      });
+    player_view_id
+  };
+
+  //paradox spiral
+  let mpv = libmpv::Mpv::new().unwrap();
+  mpv.set_property("volume", 100).unwrap();
+  mpv.set_property("hwdec", "auto");
+  //mpv.set_property("terminal", "yes").unwrap();
+  //mpv.set_property("msg-level", "all=v").unwrap();
+  mpv.set_property("wid", player_view_id).unwrap();
+  let mut ev_ctx = mpv.create_event_context();
+  ev_ctx.disable_deprecated_events().unwrap();
+
+  mpv.playlist_load_files(&[(
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    libmpv::FileState::AppendPlay,
+    None
+  )]);
   // end of paradoxapiral
 
-    /*
-    // not defininig playerView.isOpaque and .drawRect, although we may have to
-    // not for drawRect, it's defined here: https://github.com/mpv-player/mpv/blob/master/video/out/cocoa/video_view.m
-    */
-  }
+  /*
+  // not defininig playerView.isOpaque and .drawRect, although we may have to
+  // not for drawRect, it's defined here: https://github.com/mpv-player/mpv/blob/master/video/out/cocoa/video_view.m
+  */
   // end setup MPV
 
 
   event_loop.run(move |event, _, control_flow| {
     *control_flow = ControlFlow::Wait;
-
+    //dbg!(ev_ctx.wait_event(600.));
+    
     match event {
       Event::NewEvents(StartCause::Init) => println!("Wry has started!"),
       Event::WindowEvent {
