@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-License-Identifier: MIT
 
+
+// TO COMPILE, USE  export RUSTFLAGS='-L/opt/homebrew/Cellar/mpv/0.39.0/lib/'
+
 use objc::*;
 // needed so we can get the .webview() and .ns_window() which is an NSView: https://github.com/tauri-apps/wry/blob/dev/src/webview/mod.rs#L856
 use wry::webview::WebviewExtMacOS;
@@ -56,7 +59,7 @@ fn main() -> wry::Result<()> {
     let _: () = msg_send![content_view, addSubview:player_view positioned:NSWindowOrderingMode::NSWindowBelow relativeTo:webview_view];
     // this line seems to not do anything
     //let _: () = msg_send![content_view, setAutoresizesSubviews:cocoa::base::YES];
-    dbg!(webview_view, content_view, window_id, player_view);
+    dbg!("all window IDs", webview_view, content_view, window_id, player_view);
 
     // we need a new thread here anyway
     let player_view_id = player_view as i64;
@@ -64,7 +67,10 @@ fn main() -> wry::Result<()> {
     //paradox spiral
     let mpv = libmpv::Mpv::new().unwrap();
     mpv.set_property("volume", 100).unwrap();
-    mpv.set_property("hwdec", "auto");
+    // For use with libmpv direct embedding. As a special case, on macOS it is used like a normal VO within mpv (cocoa-cb). Otherwise useless in any other contexts. (See <mpv/render.h>.)
+    // This also supports many of the options the gpu VO has, depending on the backend.
+    mpv.set_property("vo", "libmpv").unwrap();
+    // mpv.set_property("hwdec", "auto").unwrap();
     mpv.set_property("terminal", "yes").unwrap();
     mpv.set_property("msg-level", "all=v").unwrap();
     mpv.set_property("wid", player_view_id).unwrap();
