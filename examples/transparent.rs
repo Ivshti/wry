@@ -39,12 +39,13 @@ fn main() -> wry::Result<()> {
     .with_transparent(true)
     .with_devtools(true)
     .with_url( 
-      //"https://app.strem.io/shell-v4.4/#/"
-      "http://127.0.0.1:11470/#/"
+      "https://app.strem.io/shell-v4.4/#/"
+      // "http://127.0.0.1:11470/#/"
     )?
     .build()?;
 
   // Setup MPV
+  // @TODO get rid of the unsafe
   unsafe {
     let window_id = webview.ns_window();
     let content_view: id = msg_send![window_id, contentView];
@@ -61,19 +62,26 @@ fn main() -> wry::Result<()> {
     //let _: () = msg_send![content_view, setAutoresizesSubviews:cocoa::base::YES];
     dbg!("all window IDs", webview_view, content_view, window_id, player_view);
 
-    // we need a new thread here anyway
     let player_view_id = player_view as i64;
 
     //paradox spiral
     let mpv = libmpv::Mpv::new().unwrap();
-    mpv.set_property("volume", 100).unwrap();
-    // For use with libmpv direct embedding. As a special case, on macOS it is used like a normal VO within mpv (cocoa-cb). Otherwise useless in any other contexts. (See <mpv/render.h>.)
-    // This also supports many of the options the gpu VO has, depending on the backend.
-    mpv.set_property("vo", "libmpv").unwrap();
-    // mpv.set_property("hwdec", "auto").unwrap();
     mpv.set_property("terminal", "yes").unwrap();
     mpv.set_property("msg-level", "all=v").unwrap();
     mpv.set_property("wid", player_view_id).unwrap();
+    mpv.set_property("volume", 100).unwrap();
+    // For use with libmpv direct embedding. As a special case, on macOS it is used like a normal VO within mpv (cocoa-cb). Otherwise useless in any other contexts. (See <mpv/render.h>.)
+    // This also supports many of the options the gpu VO has, depending on the backend.
+    // "window embedding"!!!! not "direct embedding"
+    mpv.set_property("vo", "swift").unwrap();
+    // mpv.set_property("hwdec", "auto").unwrap();
+    // mpv.set_property("gpu-context", "macvk").unwrap();
+    // yeah it uses the GPU, like vo=gpu and vo=libmpv does. vo=libmpv is basically just a wrapper around vo=gpu with a public API and driving your own render loop.
+    // @TODO
+//     check_error(mpv_set_option_string(mpv, "vo", "gpu-next"));
+// check_error(mpv_set_option_string(mpv, "gpu-api", "vulkan"));
+// check_error(mpv_set_option_string(mpv, "gpu-context", "macvk"));
+    // we need a new thread here anyway for the event loop
       std::thread::spawn(move || {
         let mut ev_ctx = mpv.create_event_context();
         ev_ctx.disable_deprecated_events().unwrap();
