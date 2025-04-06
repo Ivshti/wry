@@ -43,6 +43,20 @@ fn main() -> wry::Result<()> {
     let cb = ContextBuilder::new();
     let display = Display::new(wb, cb, &events_loop).unwrap();
 
+    // Create WRY window and webview
+    let wry_event_loop = WryEventLoop::new();
+    let wry_window = WryWindowBuilder::new()
+        .with_decorations(true)
+        .with_transparent(true)
+        .build(&wry_event_loop)
+        .unwrap();
+
+    let webview = WebViewBuilder::new(wry_window)?
+        .with_transparent(true)
+        .with_devtools(true)
+        .with_url("https://app.strem.io/shell-v4.4/#/")?
+        .build()?;
+
     // Create MPV instance and render context
     let mut mpv = Mpv::with_initializer(|init| {
         init.set_property("vo", "libmpv")?;
@@ -69,24 +83,11 @@ fn main() -> wry::Result<()> {
     render_context.set_update_callback(move || {
         event_proxy.send_event(UserEvent::RedrawRequested).unwrap();
     });
+    // we need a new one because we moved the previous one
     let event_proxy = events_loop.create_proxy();
     mpv.event_context_mut().set_wakeup_callback(move || {
         event_proxy.send_event(UserEvent::MpvEventAvailable).unwrap();
     });
-
-    // Create WRY window and webview
-    let wry_event_loop = WryEventLoop::new();
-    let wry_window = WryWindowBuilder::new()
-        .with_decorations(true)
-        .with_transparent(true)
-        .build(&wry_event_loop)
-        .unwrap();
-
-    let webview = WebViewBuilder::new(wry_window)?
-        .with_transparent(true)
-        .with_devtools(true)
-        .with_url("https://app.strem.io/shell-v4.4/#/")?
-        .build()?;
 
     // Load video
     mpv.command("loadfile", &["https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "replace"]).unwrap();
