@@ -35,6 +35,13 @@ enum UserEvent {
     RedrawRequested,
 }
 
+fn get_proc_address(display: &Display, name: &str) -> *mut c_void{
+    let proc = display.gl_window().context().get_proc_address(name);
+    println!("Loading OpenGL function: {} -> {:?}", name, proc);
+    proc as *mut c_void
+
+}
+
 fn main() -> wry::Result<()> {
     // Create the event loop for MPV
     let events_loop = EventLoop::<UserEvent>::with_user_event();
@@ -45,6 +52,9 @@ fn main() -> wry::Result<()> {
         .with_gl_profile(glium::glutin::GlProfile::Core)
         .with_gl(glium::glutin::GlRequest::Specific(glium::glutin::Api::OpenGl, (3, 3)));
     let display = Display::new(wb, cb, &events_loop).unwrap();
+
+    // Verify OpenGL context
+    println!("OpenGL version: {:?}", display.gl_window().context().get_api());
 
     // Create WRY window and webview
     let wry_event_loop = WryEventLoop::new();
@@ -63,7 +73,6 @@ fn main() -> wry::Result<()> {
     // Create MPV instance and render context
     let mut mpv = Mpv::with_initializer(|init| {
         init.set_property("vo", "libmpv")?;
-
         init.set_property("terminal", "yes")?;
         init.set_property("msg-level", "all=v")?;
         Ok(())
@@ -74,9 +83,7 @@ fn main() -> wry::Result<()> {
         vec![
             RenderParam::ApiType(RenderParamApiType::OpenGl),
             RenderParam::InitParams(OpenGLInitParams {
-                get_proc_address: |display: &Display, name: &str| {
-                    display.gl_window().context().get_proc_address(name) as *mut c_void
-                },
+                get_proc_address,
                 ctx: display.clone(),
             }),
         ],
