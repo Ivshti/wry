@@ -28,6 +28,7 @@ use wry::{
     webview::WebViewBuilder,
 };
 
+
 #[derive(Debug)]
 enum UserEvent {
     MpvEventAvailable,
@@ -40,7 +41,9 @@ fn main() -> wry::Result<()> {
     let wb = WindowBuilder::new()
         .with_inner_size(LogicalSize::new(1024.0, 768.0))
         .with_title("libmpv-rs OpenGL Example");
-    let cb = ContextBuilder::new();
+    let cb = ContextBuilder::new()
+        .with_gl_profile(glium::glutin::GlProfile::Core)
+        .with_gl(glium::glutin::GlRequest::Specific(glium::glutin::Api::OpenGl, (3, 3)));
     let display = Display::new(wb, cb, &events_loop).unwrap();
 
     // Create WRY window and webview
@@ -60,8 +63,11 @@ fn main() -> wry::Result<()> {
     // Create MPV instance and render context
     let mut mpv = Mpv::with_initializer(|init| {
         init.set_property("vo", "libmpv")?;
+
+        init.set_property("terminal", "yes")?;
+        init.set_property("msg-level", "all=v")?;
         Ok(())
-    }).unwrap();
+    }).expect("Failed to create MPV instance");
 
     let mut render_context = RenderContext::new(
         unsafe { mpv.ctx.as_mut() },
@@ -88,7 +94,6 @@ fn main() -> wry::Result<()> {
     mpv.event_context_mut().set_wakeup_callback(move || {
         event_proxy.send_event(UserEvent::MpvEventAvailable).unwrap();
     });
-
     // Load video
     mpv.command("loadfile", &["https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "replace"]).unwrap();
 
@@ -126,8 +131,7 @@ fn main() -> wry::Result<()> {
             },
             Event::RedrawRequested(_) => {
                 let (width, height) = display.get_framebuffer_dimensions();
-                render_context
-                    .render::<Display>(0, width as _, height as _, true)
+                render_context.render::<Display>(0, width as _, height as _, true)
                     .expect("Failed to draw on glutin window");
                 display.swap_buffers().unwrap();
                 *control_flow = ControlFlow::Wait;
