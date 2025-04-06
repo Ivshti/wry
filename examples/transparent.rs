@@ -5,117 +5,139 @@
 
 // TO COMPILE, USE  export RUSTFLAGS='-L/opt/homebrew/Cellar/mpv/0.39.0/lib/'
 
-use objc::*;
-// needed so we can get the .webview() and .ns_window() which is an NSView: https://github.com/tauri-apps/wry/blob/dev/src/webview/mod.rs#L856
-use wry::webview::WebviewExtMacOS;
-use cocoa::base::id;
-use cocoa::appkit::{NSView, NSViewHeightSizable, NSViewWidthSizable};
-use cocoa::appkit::NSWindowOrderingMode;
-use core_graphics::geometry::CGRect;
-
-fn main() -> wry::Result<()> {
-  use wry::{
+use std::ffi::c_void;
+use glium::{
+    glutin::{
+        dpi::LogicalSize,
+        event::{Event, WindowEvent},
+        event_loop::{ControlFlow, EventLoop},
+        window::WindowBuilder,
+        ContextBuilder,
+    },
+    Display,
+};
+use libmpv2::{
+    render::{OpenGLInitParams, RenderContext, RenderParam, RenderParamApiType},
+    Mpv,
+};
+use wry::{
     application::{
-      event::{Event, StartCause, WindowEvent},
-      event_loop::{ControlFlow, EventLoop},
-      window::WindowBuilder,
+        event_loop::EventLoop as WryEventLoop,
+        window::WindowBuilder as WryWindowBuilder,
     },
     webview::WebViewBuilder,
-  };
+};
 
-  // WindowBuilder, Window is from Tao
-  let event_loop = EventLoop::new();
-  let window = WindowBuilder::new()
-    .with_decorations(true)
-    // There are actually three layer of background color when creating webview window.
-    // The first is window background...
-    .with_transparent(true)
-    .build(&event_loop)
-    .unwrap();
+#[derive(Debug)]
+enum UserEvent {
+    MpvEventAvailable,
+    RedrawRequested,
+}
 
-  // setup the webview first because it sets a new contentView
-  let webview = WebViewBuilder::new(window)?
-    // The second is on webview...
-    .with_transparent(true)
-    .with_devtools(true)
-    .with_url( 
-      "https://app.strem.io/shell-v4.4/#/"
-      // "http://127.0.0.1:11470/#/"
-    )?
-    .build()?;
+fn main() -> wry::Result<()> {
+    // Create the event loop for MPV
+    let events_loop = EventLoop::<UserEvent>::with_user_event();
+    let wb = WindowBuilder::new()
+        .with_inner_size(LogicalSize::new(1024.0, 768.0))
+        .with_title("libmpv-rs OpenGL Example");
+    let cb = ContextBuilder::new();
+    let display = Display::new(wb, cb, &events_loop).unwrap();
 
-  // Setup MPV
-  // @TODO get rid of the unsafe
-  unsafe {
-    let window_id = webview.ns_window();
-    let content_view: id = msg_send![window_id, contentView];
-    let player_view: id = msg_send![class!(NSView), alloc];
-    let frame: CGRect = msg_send![content_view, bounds];
-    let _: () = msg_send![player_view, initWithFrame:frame];
-    // This next line is actually done in wry: https://github.com/tauri-apps/wry/blob/dev/src/webview/wkwebview/mod.rs#L748
-    // this line triggers a segfault when resizing the window
-    // sometimes it doesn't crash so we need to debug this
-    let _: () = msg_send![player_view, setAutoresizingMask:NSViewHeightSizable | NSViewWidthSizable];
-    let webview_view = webview.webview();
-    let _: () = msg_send![content_view, addSubview:player_view positioned:NSWindowOrderingMode::NSWindowBelow relativeTo:webview_view];
-    // this line seems to not do anything
-    //let _: () = msg_send![content_view, setAutoresizesSubviews:cocoa::base::YES];
-    dbg!("all window IDs", webview_view, content_view, window_id, player_view);
+    // Create MPV instance and render context
+    let mut mpv = Mpv::with_initializer(|init| {
+        init.set_property("vo", "libmpv")?;
+        Ok(())
+    }).unwrap();
 
-    let player_view_id = player_view as i64;
+    let mut render_context = RenderContext::new(
+        unsafe { mpv.ctx.as_mut() },
+        vec![
+            RenderParam::ApiType(RenderParamApiType::OpenGl),
+            RenderParam::InitParams(OpenGLInitParams {
+                get_proc_address: |display: &Display, name: &str| {
+                    display.gl_window().context().get_proc_address(name) as *mut c_void
+                },
+                ctx: display.clone(),
+            }),
+        ],
+    )
+    .expect("Failed creating render context");
 
-    //paradox spiral
-    let mpv = libmpv::Mpv::new().unwrap();
-    mpv.set_property("terminal", "yes").unwrap();
-    mpv.set_property("msg-level", "all=v").unwrap();
-    mpv.set_property("wid", player_view_id).unwrap();
-    mpv.set_property("volume", 100).unwrap();
-    // For use with libmpv direct embedding. As a special case, on macOS it is used like a normal VO within mpv (cocoa-cb). Otherwise useless in any other contexts. (See <mpv/render.h>.)
-    // This also supports many of the options the gpu VO has, depending on the backend.
-    // "window embedding"!!!! not "direct embedding"
-    mpv.set_property("vo", "swift").unwrap();
-    // mpv.set_property("hwdec", "auto").unwrap();
-    // mpv.set_property("gpu-context", "macvk").unwrap();
-    // yeah it uses the GPU, like vo=gpu and vo=libmpv does. vo=libmpv is basically just a wrapper around vo=gpu with a public API and driving your own render loop.
-    // @TODO
-//     check_error(mpv_set_option_string(mpv, "vo", "gpu-next"));
-// check_error(mpv_set_option_string(mpv, "gpu-api", "vulkan"));
-// check_error(mpv_set_option_string(mpv, "gpu-context", "macvk"));
-    // we need a new thread here anyway for the event loop
-      std::thread::spawn(move || {
-        let mut ev_ctx = mpv.create_event_context();
-        ev_ctx.disable_deprecated_events().unwrap();
-    
-        mpv.playlist_load_files(&[(
-          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-          libmpv::FileState::AppendPlay,
-          None
-        )]);
-        loop {
-          let ev = ev_ctx.wait_event(600.);
-          dbg!(&ev);
+    // Setup event callbacks
+    mpv.event_context_mut().disable_deprecated_events().unwrap();
+    let event_proxy = events_loop.create_proxy();
+    render_context.set_update_callback(move || {
+        event_proxy.send_event(UserEvent::RedrawRequested).unwrap();
+    });
+    let event_proxy = events_loop.create_proxy();
+    mpv.event_context_mut().set_wakeup_callback(move || {
+        event_proxy.send_event(UserEvent::MpvEventAvailable).unwrap();
+    });
+
+    // Create WRY window and webview
+    let wry_event_loop = WryEventLoop::new();
+    let wry_window = WryWindowBuilder::new()
+        .with_decorations(true)
+        .with_transparent(true)
+        .build(&wry_event_loop)
+        .unwrap();
+
+    let webview = WebViewBuilder::new(wry_window)?
+        .with_transparent(true)
+        .with_devtools(true)
+        .with_url("https://app.strem.io/shell-v4.4/#/")?
+        .build()?;
+
+    // Load video
+    mpv.command("loadfile", &["https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", "replace"]).unwrap();
+
+    // Run the event loop
+    events_loop.run(move |event, _target, control_flow| {
+        match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => {
+                *control_flow = ControlFlow::Exit;
+            }
+            Event::UserEvent(UserEvent::RedrawRequested) => {
+                display.gl_window().window().request_redraw();
+            }
+            Event::UserEvent(UserEvent::MpvEventAvailable) => loop {
+                match mpv.event_context_mut().wait_event(0.0) {
+                    Some(Ok(libmpv2::events::Event::EndFile(_))) => {
+                        *control_flow = ControlFlow::Exit;
+                        break;
+                    }
+                    Some(Ok(mpv_event)) => {
+                        eprintln!("MPV event: {:?}", mpv_event);
+                    }
+                    Some(Err(err)) => {
+                        eprintln!("MPV Error: {}", err);
+                        *control_flow = ControlFlow::Exit;
+                        break;
+                    }
+                    None => {
+                        *control_flow = ControlFlow::Wait;
+                        break;
+                    }
+                }
+            },
+            Event::RedrawRequested(_) => {
+                let (width, height) = display.get_framebuffer_dimensions();
+                render_context
+                    .render::<Display>(0, width as _, height as _, true)
+                    .expect("Failed to draw on glutin window");
+                display.swap_buffers().unwrap();
+                *control_flow = ControlFlow::Wait;
+            }
+            Event::LoopDestroyed => {
+                // @TODO
+                // drop(render_context); // Properly drop the render context before the mpv player
+            }
+            _ => {
+                *control_flow = ControlFlow::Wait;
+            }
         }
-      });
-  // end of paradoxapiral
-
-    /*
-    // not defininig playerView.isOpaque and .drawRect, although we may have to
-    // not for drawRect, it's defined here: https://github.com/mpv-player/mpv/blob/master/video/out/cocoa/video_view.m
-    */
-  }
-  // end setup MPV
-
-
-  event_loop.run(move |event, _, control_flow| {
-    *control_flow = ControlFlow::Wait;
-
-    match event {
-      Event::NewEvents(StartCause::Init) => println!("Wry has started!"),
-      Event::WindowEvent {
-        event: WindowEvent::CloseRequested,
-        ..
-      } => *control_flow = ControlFlow::Exit,
-      _ => {}
-    }
-  });
+    });
 }

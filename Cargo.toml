@@ -49,10 +49,9 @@ anyhow = "1.0"
 http-range = "0.1.5"
 dirs = "4.0.0"
 base64 = "0.13.1"
-libmpv = { git = "https://github.com/sirno/libmpv-rs", branch="upgrade-libmpv" }
+libmpv2 = { git = "https://github.com/kohsine/libmpv2-rs" }
 crossbeam = "0.8.2"
 glium = { version = "0.30", features = ["glutin"] }
-libmpv_anlumo = { package = "libmpv", git = "https://github.com/anlumo/libmpv-rs" }
 
 [target."cfg(any(target_os = \"linux\", target_os = \"dragonfly\", target_os = \"freebsd\", target_os = \"openbsd\", target_os = \"netbsd\"))".dependencies]
 webkit2gtk = { version = "0.18.2", features = [ "v2_22" ] }
